@@ -2,7 +2,7 @@
 
 A Home Assistant custom panel to edit the Frigate `config.yml` through a graphical interface, with live validation, diff preview and automatic restart. Distributed via [HACS](https://hacs.xyz/).
 
-> Status: **pre-alpha / MVP in progress**. Not yet installable. Follow the [milestones](docs/MVP_SPEC.md#9-milestone-roadmap) in the spec.
+> Status: **pre-alpha / MVP in progress**. Not yet installable.
 
 ## Why
 
@@ -18,8 +18,6 @@ Editing Frigate's YAML config by hand is error-prone. This panel generates dynam
 - Raw YAML fallback via Monaco editor for sections not covered by forms
 - Local history of the last 10 saves (LocalStorage, compressed)
 - Dark/light theme aligned with Home Assistant
-
-See the full [MVP spec](docs/MVP_SPEC.md) for details on scope, architecture and roadmap.
 
 ## Requirements
 

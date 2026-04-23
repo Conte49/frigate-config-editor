@@ -56,3 +56,6 @@ Thumbs.db
 *.local.yaml
 tmp/
 .tmp/
+
+# Internal docs (not for public repo)
+docs/
