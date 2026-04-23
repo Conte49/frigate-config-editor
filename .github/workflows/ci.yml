@@ -44,6 +44,9 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Coverage (enforce thresholds)
+        run: pnpm test:coverage
+
       - name: Build
         run: pnpm build
 
@@ -54,3 +57,13 @@ jobs:
           path: dist/frigate-config-editor.js
           if-no-files-found: error
           retention-days: 7
+
+  hacs-validation:
+    name: HACS validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: HACS action
+        uses: hacs/action@main
+        with:
+          category: plugin
