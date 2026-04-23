@@ -123,3 +123,41 @@ simple JSON serialisation.
 
 **Consequences:** snapshot timestamps may drift up to a few ms into the
 future on rapid bursts; acceptable given the human-oriented granularity.
+
+---
+
+## ADR-006 — Form renderer surface area for M2
+
+**Date:** M2
+**Status:** Accepted
+**Context:** The MVP spec covers the full Frigate camera config; trying
+to build a UI for every leaf on day one would have delayed the first
+end-to-end save flow.
+
+**Decision:** ship M2 with hand-written Lit components for the top
+cameras.\* sections most users touch (general enable, ffmpeg inputs,
+detect w/h/fps, record retention). Anything outside that surface is
+preserved on save via the full YAML round-trip (see ADR-002) and will
+receive dedicated editors in later milestones.
+
+**Consequences:** we keep the editor approachable and the bundle small
+for the first pushable version while still guaranteeing round-trip
+safety for the rest of the config.
+
+---
+
+## ADR-007 — Save flow uses surgical patch over the raw document
+
+**Date:** M2
+**Status:** Accepted
+**Context:** Replacing the full config with a re-serialised JS object
+would strip every comment and reformat user-authored YAML, defeating
+ADR-002.
+
+**Decision:** `#save` re-parses the original YAML document, calls
+`applyPatch(doc, 'cameras', workingConfig.cameras)` and serialises the
+document. Sections untouched by the editor keep their original
+formatting and comments byte-for-byte.
+
+**Consequences:** adding editors for new sections (`record`, `objects`,
+etc.) only requires extending the patch call with the matching path.
