@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-04-23
+
+### Changed
+
+- `hacs.json` now declares `zip_release: true` and `filename: frigate_config_editor.zip`, so HACS downloads the curated release asset instead of scraping the repository tree.
+- CI and release workflows bumped to Node 22 and rely on `packageManager` from `package.json` for pnpm version selection (fixes `ERR_PNPM_BAD_PM_VERSION`).
+
 ## [0.1.0] - 2026-04-23
 
 ### Added
@@ -26,5 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - First tagged release. Expect API and UI to evolve across `0.1.x` before a stable `1.0`.
 
-[Unreleased]: https://github.com/Conte49/frigate-config-editor/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Conte49/frigate-config-editor/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Conte49/frigate-config-editor/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Conte49/frigate-config-editor/releases/tag/v0.1.0
