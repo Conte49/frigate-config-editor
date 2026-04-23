@@ -1,0 +1,7 @@
+{
+  "name": "Frigate Config Editor",
+  "render_readme": true,
+  "content_in_root": false,
+  "filename": "frigate-config-editor.js",
+  "homeassistant": "2024.6.0"
+}
