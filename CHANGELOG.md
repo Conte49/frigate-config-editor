@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-04-23
+
+### Fixed
+
+- Release workflow no longer uses `make_latest`, which caused an `Error updating policy` and prevented the `frigate_config_editor.zip` asset from being uploaded. HACS now has a reliable zip to pull on every tag.
+- `actions: read` permission added to the release workflow to match the scopes required by newer `softprops/action-gh-release` versions.
+
 ## [0.1.1] - 2026-04-23
 
 ### Changed
@@ -33,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - First tagged release. Expect API and UI to evolve across `0.1.x` before a stable `1.0`.
 
-[Unreleased]: https://github.com/Conte49/frigate-config-editor/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/Conte49/frigate-config-editor/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/Conte49/frigate-config-editor/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/Conte49/frigate-config-editor/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Conte49/frigate-config-editor/releases/tag/v0.1.0
