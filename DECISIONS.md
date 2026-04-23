@@ -77,3 +77,49 @@ of dedicated field components (`field-text`, `field-number`, `field-select`,
 **Reasoning:** pnpm is the de-facto standard in the HACS / HA frontend
 ecosystem, its strict node_modules layout catches phantom dependencies
 early, and install times are meaningfully better than npm.
+
+---
+
+## ADR-004 — Frigate discovery via HA device registry
+
+**Date:** M1
+**Status:** Accepted
+**Context:** MVP spec §3.3 proposes discovering Frigate instances by
+scanning `hass.states` for entities matching `binary_sensor.*_camera_fps`
+and inferring the base URL from their device info.
+
+**Problem:** entity-id pattern matching is fragile. Entity ids depend on
+the camera name chosen by the user, the integration version, and may be
+renamed. The device registry, in contrast, is stable and directly exposes
+the `configuration_url` of each Frigate instance.
+
+**Decision:** query the HA websocket API (`config_entries/get` +
+`config/device_registry/list`), filter by `domain === "frigate"` and
+dedupe by `configuration_url`.
+
+**Consequences:**
+
+- Requires the official Frigate HA integration, which is already a
+  prerequisite listed in the README.
+- Robust to camera renames and locale changes.
+- Falls back to empty list when the integration is absent; the UI will
+  ask the user for a manual URL.
+
+---
+
+## ADR-005 — History timestamp disambiguation
+
+**Date:** M1
+**Status:** Accepted
+**Context:** Multiple snapshots added within the same millisecond would
+produce non-deterministic ordering when calling `list()`, which breaks
+the "most recent first" contract users expect.
+
+**Decision:** the `HistoryStore` tracks a monotonic `lastTimestamp` and
+bumps it by `+1ms` whenever the clock did not advance. This guarantees
+stable ordering without depending on `performance.now()` (which is not
+available in every sandboxed context) and keeps the field numeric for
+simple JSON serialisation.
+
+**Consequences:** snapshot timestamps may drift up to a few ms into the
+future on rapid bursts; acceptable given the human-oriented granularity.
