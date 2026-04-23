@@ -4,7 +4,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { FrigateApi, FrigateApiError } from './lib/frigate-api.js';
 import { discoverFrigateInstances, type FrigateInstance } from './lib/ha-integration.js';
 import { applyPatch, parseYaml, stringifyDocument, summariseChanges } from './lib/yaml-utils.js';
-import { HistoryStore } from './lib/history-store.js';
+import { HistoryStore, type ConfigSnapshot } from './lib/history-store.js';
 import { setAtPath } from './lib/path-utils.js';
 import { themeVariables } from './styles/theme.js';
 import type { CameraConfig, FrigateConfig } from './types/frigate.js';
@@ -12,8 +12,12 @@ import type { HomeAssistant, PanelInfo } from './types/home-assistant.js';
 
 import './components/camera-editor.js';
 import './components/camera-list.js';
+import './components/diff-modal.js';
+import './components/history-panel.js';
+import './components/raw-yaml-editor.js';
 
 type Status = 'idle' | 'loading' | 'saving' | 'error' | 'ready';
+type View = 'cameras' | 'raw' | 'history';
 
 /**
  * Root component. Owns discovery, config load/save and sidebar state,
@@ -35,6 +39,11 @@ export class FrigateConfigEditor extends LitElement {
   @state() private status: Status = 'idle';
   @state() private errorMessage = '';
   @state() private saveMessage = '';
+  @state() private view: View = 'cameras';
+  @state() private rawYaml = '';
+  @state() private pendingYaml = '';
+  @state() private diffOpen = false;
+  @state() private snapshots: ConfigSnapshot[] = [];
 
   private readonly history = new HistoryStore();
 
@@ -99,6 +108,29 @@ export class FrigateConfigEditor extends LitElement {
         gap: 8px;
         align-items: center;
         flex-wrap: wrap;
+      }
+      .nav {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .nav-btn {
+        text-align: left;
+        font-family: inherit;
+        font-size: 0.9rem;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: var(--fce-radius-sm);
+        padding: 8px 10px;
+        color: var(--fce-text);
+        cursor: pointer;
+      }
+      .nav-btn:hover {
+        background: var(--fce-surface-muted);
+      }
+      .nav-btn.active {
+        background: var(--fce-accent);
+        color: var(--fce-accent-text);
       }
       button {
         font-family: inherit;
@@ -199,11 +231,13 @@ export class FrigateConfigEditor extends LitElement {
         this.currentApi.getVersion().catch(() => ({ version: '' })),
       ]);
       this.originalYaml = raw;
+      this.rawYaml = raw;
       this.frigateVersion = version.version;
       const { data } = parseYaml(raw);
       this.workingConfig = data as FrigateConfig;
       const cameras = Object.keys(this.workingConfig.cameras ?? {});
       this.selectedCamera = cameras[0] ?? '';
+      this.#refreshSnapshots();
       this.status = 'ready';
     } catch (error) {
       this.status = 'error';
@@ -211,15 +245,45 @@ export class FrigateConfigEditor extends LitElement {
     }
   }
 
-  async #save(): Promise<void> {
-    if (!this.currentApi || !this.workingConfig) return;
-    const parsed = parseYaml(this.originalYaml);
-    applyPatch(parsed.document, 'cameras', this.workingConfig.cameras);
-    const nextYaml = stringifyDocument(parsed.document);
-    if (nextYaml === this.originalYaml) {
-      this.saveMessage = 'No changes to save.';
+  #refreshSnapshots(): void {
+    if (!this.currentInstance) {
+      this.snapshots = [];
       return;
     }
+    this.snapshots = this.history.list(this.currentInstance.id);
+  }
+
+  #buildNextYaml(): string {
+    if (this.view === 'raw') return this.rawYaml;
+    if (!this.workingConfig) return this.originalYaml;
+    const parsed = parseYaml(this.originalYaml);
+    applyPatch(parsed.document, 'cameras', this.workingConfig.cameras);
+    return stringifyDocument(parsed.document);
+  }
+
+  #onRequestSave = (): void => {
+    const nextYaml = this.#buildNextYaml();
+    if (nextYaml === this.originalYaml) {
+      this.saveMessage = 'No changes to save.';
+      this.errorMessage = '';
+      return;
+    }
+    this.pendingYaml = nextYaml;
+    this.diffOpen = true;
+  };
+
+  #onDiffCancel = (): void => {
+    if (this.status === 'saving') return;
+    this.diffOpen = false;
+    this.pendingYaml = '';
+  };
+
+  #onDiffConfirm = async (): Promise<void> => {
+    await this.#save(this.pendingYaml);
+  };
+
+  async #save(nextYaml: string): Promise<void> {
+    if (!this.currentApi || nextYaml === this.originalYaml) return;
     this.status = 'saving';
     this.errorMessage = '';
     try {
@@ -235,9 +299,15 @@ export class FrigateConfigEditor extends LitElement {
           yaml: this.originalYaml,
           summary: summariseChanges(this.originalYaml, nextYaml),
         });
+        this.#refreshSnapshots();
       }
       this.originalYaml = nextYaml;
+      this.rawYaml = nextYaml;
+      const { data } = parseYaml(nextYaml);
+      this.workingConfig = data as FrigateConfig;
       this.saveMessage = 'Configuration saved. Frigate is restarting.';
+      this.diffOpen = false;
+      this.pendingYaml = '';
       this.status = 'ready';
     } catch (error) {
       this.status = 'error';
@@ -271,6 +341,31 @@ export class FrigateConfigEditor extends LitElement {
     const instance = this.instances.find((i) => i.id === target.value);
     if (instance) void this.#selectInstance(instance);
   };
+
+  #onRawChange = (event: CustomEvent<{ value: string }>) => {
+    this.rawYaml = event.detail.value;
+  };
+
+  #onHistoryRestore = (event: CustomEvent<{ snapshot: ConfigSnapshot }>) => {
+    const { snapshot } = event.detail;
+    this.rawYaml = snapshot.yaml;
+    this.view = 'raw';
+    this.saveMessage = `Loaded snapshot from ${new Date(snapshot.timestamp).toLocaleString()}. Review and save to apply.`;
+    this.errorMessage = '';
+  };
+
+  #setView(view: View): void {
+    this.view = view;
+    if (view === 'raw' && !this.rawYaml) this.rawYaml = this.originalYaml;
+    if (view === 'cameras' && this.workingConfig === undefined) {
+      try {
+        const { data } = parseYaml(this.rawYaml || this.originalYaml);
+        this.workingConfig = data as FrigateConfig;
+      } catch {
+        /* leave workingConfig untouched */
+      }
+    }
+  }
 
   override render() {
     if (!this.hass) {
@@ -315,12 +410,37 @@ export class FrigateConfigEditor extends LitElement {
             .selected=${this.selectedCamera}
             @fce-camera-select=${this.#onCameraSelect}
           ></frigate-camera-list>
+
+          <h2>Advanced</h2>
+          <nav class="nav">
+            <button
+              class=${this.view === 'raw' ? 'nav-btn active' : 'nav-btn'}
+              type="button"
+              @click=${() => this.#setView('raw')}
+            >
+              Raw YAML
+            </button>
+            <button
+              class=${this.view === 'history' ? 'nav-btn active' : 'nav-btn'}
+              type="button"
+              @click=${() => this.#setView('history')}
+            >
+              History (${this.snapshots.length})
+            </button>
+            ${this.view !== 'cameras'
+              ? html`
+                  <button class="nav-btn" type="button" @click=${() => this.#setView('cameras')}>
+                    Back to cameras
+                  </button>
+                `
+              : nothing}
+          </nav>
         </aside>
 
         <main>
           <header class="page">
             <div>
-              <h1>${this.selectedCamera || 'Select a camera'}</h1>
+              <h1>${this.#headingForView()}</h1>
               ${this.currentInstance
                 ? html`<small style="color: var(--fce-text-muted)"
                     >${this.currentInstance.name} — ${this.currentInstance.baseUrl}</small
@@ -338,12 +458,10 @@ export class FrigateConfigEditor extends LitElement {
               <button
                 class="primary"
                 type="button"
-                @click=${() => void this.#save()}
-                ?disabled=${!this.workingConfig ||
-                this.status === 'saving' ||
-                this.status === 'loading'}
+                @click=${this.#onRequestSave}
+                ?disabled=${this.#saveDisabled()}
               >
-                ${this.status === 'saving' ? 'Saving…' : 'Save changes'}
+                Review & save
               </button>
             </div>
           </header>
@@ -357,7 +475,28 @@ export class FrigateConfigEditor extends LitElement {
           ${this.#renderBody(currentCamera)}
         </main>
       </div>
+
+      <frigate-diff-modal
+        .open=${this.diffOpen}
+        .oldText=${this.originalYaml}
+        .newText=${this.pendingYaml}
+        .saving=${this.status === 'saving'}
+        @fce-diff-cancel=${this.#onDiffCancel}
+        @fce-diff-confirm=${() => void this.#onDiffConfirm()}
+      ></frigate-diff-modal>
     `;
+  }
+
+  #headingForView(): string {
+    if (this.view === 'raw') return 'Raw YAML';
+    if (this.view === 'history') return 'History';
+    return this.selectedCamera || 'Select a camera';
+  }
+
+  #saveDisabled(): boolean {
+    if (this.status === 'saving' || this.status === 'loading') return true;
+    if (this.view === 'raw') return this.rawYaml === this.originalYaml;
+    return !this.workingConfig;
   }
 
   #renderBody(currentCamera: CameraConfig | undefined) {
@@ -370,6 +509,22 @@ export class FrigateConfigEditor extends LitElement {
           No Frigate instances found via the Home Assistant integration. Install the Frigate
           integration first, or support for a manual URL will land in a future release.
         </div>
+      `;
+    }
+    if (this.view === 'raw') {
+      return html`
+        <frigate-raw-yaml-editor
+          .value=${this.rawYaml}
+          @fce-yaml-change=${this.#onRawChange}
+        ></frigate-raw-yaml-editor>
+      `;
+    }
+    if (this.view === 'history') {
+      return html`
+        <frigate-history-panel
+          .snapshots=${this.snapshots}
+          @fce-history-restore=${this.#onHistoryRestore}
+        ></frigate-history-panel>
       `;
     }
     if (!currentCamera) {

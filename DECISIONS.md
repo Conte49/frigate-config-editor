@@ -161,3 +161,53 @@ formatting and comments byte-for-byte.
 
 **Consequences:** adding editors for new sections (`record`, `objects`,
 etc.) only requires extending the patch call with the matching path.
+
+---
+
+## ADR-008 — Raw YAML editor: textarea over Monaco for the MVP
+
+**Date:** M3
+**Status:** Accepted
+**Context:** MVP spec §3.1 picks Monaco as the raw YAML editor.
+
+**Problem:** Monaco ships as a multi-megabyte asset tree (core + theme
+workers + basic-languages) that Vite can bundle into the target ES
+module only with significant duct tape. HA custom panels are served as
+a single file; bundling Monaco brings the output well above 3 MB,
+which noticeably impacts the panel cold start.
+
+**Decision:** ship M3 with a hand-rolled editor built around a
+`<textarea>` that exposes:
+
+- line-numbered gutter synchronised with scroll,
+- Tab-to-indent,
+- `fce-yaml-change` event,
+- monospace styling consistent with HA themes.
+
+No syntax highlighting or completion for the first release. If real-
+world feedback shows the textarea is insufficient, we will migrate to
+**CodeMirror 6** (not Monaco): it is explicitly designed for embedding,
+tree-shakeable, and a YAML highlighter costs ~40 kB gzipped.
+
+**Consequences:** the raw editor is functional but modest. Users that
+need full IDE-grade editing can keep doing so in their regular editor;
+the panel is meant for quick tweaks and emergency fixes, not as a
+replacement for an IDE.
+
+---
+
+## ADR-009 — Pre-save diff modal is mandatory
+
+**Date:** M3
+**Status:** Accepted
+**Context:** A bad save corrupts the Frigate config and can take the
+NVR offline (see risk #6 in MVP spec §10).
+
+**Decision:** every `Save` click opens a full diff modal against the
+last known-good YAML. The call to `saveConfig` only fires after explicit
+user confirmation. Reload and history restore flows never bypass the
+modal.
+
+**Consequences:** one extra click for every save; acceptable trade-off
+for the safety it provides. Keyboard shortcut (Enter to confirm) is a
+post-MVP polish item.
