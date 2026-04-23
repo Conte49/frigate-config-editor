@@ -1,6 +1,6 @@
 {
   "name": "frigate-config-editor",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Home Assistant custom panel to edit Frigate config.yml via a graphical interface.",
   "type": "module",
   "private": true,

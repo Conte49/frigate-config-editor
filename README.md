@@ -2,7 +2,7 @@
 
 A Home Assistant custom panel to edit the Frigate `config.yml` through a graphical interface, with live validation, diff preview and automatic restart. Distributed via [HACS](https://hacs.xyz/).
 
-> Status: **pre-alpha / MVP in progress**. Not yet installable from HACS. Follow the [CHANGELOG](CHANGELOG.md) for the latest milestone.
+> Status: **0.1.0** — first tagged release. Expect UI and internals to evolve across `0.1.x` before a stable `1.0`. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Why
 
@@ -30,13 +30,26 @@ Editing Frigate's YAML config by hand is error-prone. This panel generates form 
 
 ## Installation
 
-> Not yet published on the HACS default repository. Once the first release ships (`v0.1.0`), install via HACS as a **custom repository**:
->
-> 1. In HACS, open the kebab menu, pick **Custom repositories**.
-> 2. Add `https://github.com/Conte49/frigate-config-editor` with category **Panel**.
-> 3. Install the entry called "Frigate Config Editor".
-> 4. Restart Home Assistant when HACS prompts you to do so.
-> 5. The new panel appears in the sidebar, visible to admin users only.
+Install via HACS as a **custom repository**:
+
+1. In HACS, open the kebab menu, pick **Custom repositories**.
+2. Add `https://github.com/Conte49/frigate-config-editor` with category **Panel**.
+3. Install the entry called "Frigate Config Editor".
+4. Restart Home Assistant when HACS prompts you to do so.
+5. The new panel appears in the sidebar, visible to admin users only.
+
+The panel is registered automatically by HACS through `panel_custom`. If you prefer to wire it up manually (e.g. outside HACS), add this to your `configuration.yaml`:
+
+```yaml
+panel_custom:
+  - name: frigate-config-editor
+    sidebar_title: Frigate Config
+    sidebar_icon: mdi:cog-outline
+    url_path: frigate-config
+    module_url: /hacsfiles/frigate-config-editor/frigate-config-editor.js
+    embed_iframe: false
+    require_admin: true
+```
 
 ## Development
 
@@ -79,7 +92,7 @@ The build produces a single ES module (`dist/frigate-config-editor.js`) that HA 
 
 ## Contributing
 
-Pre-alpha stage, the public API and internal structure will change frequently. Issues and feature requests are welcome; please hold off on PRs until `v0.1.0` is tagged. See [CONTRIBUTING.md](CONTRIBUTING.md) once it lands.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Issues, bug reports and feature requests are welcome on the repo's Issues tab.
 
 ## License
 

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-04-23
+
 ### Added
 
 - Per-camera editor with FFmpeg inputs, role pills, detect resolution/FPS, and record retention controls.
@@ -22,4 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Notes
 
-- No release yet. Bundle output, version pinning and HACS metadata still subject to change.
+- First tagged release. Expect API and UI to evolve across `0.1.x` before a stable `1.0`.
+
+[Unreleased]: https://github.com/Conte49/frigate-config-editor/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Conte49/frigate-config-editor/releases/tag/v0.1.0
