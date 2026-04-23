@@ -13,11 +13,15 @@ import type { HomeAssistant, PanelInfo } from './types/home-assistant.js';
 import './components/camera-editor.js';
 import './components/camera-list.js';
 import './components/diff-modal.js';
+import './components/go2rtc-editor.js';
 import './components/history-panel.js';
+import './components/motion-editor.js';
+import './components/objects-editor.js';
 import './components/raw-yaml-editor.js';
+import './components/record-editor.js';
 
 type Status = 'idle' | 'loading' | 'saving' | 'error' | 'ready';
-type View = 'cameras' | 'raw' | 'history';
+type View = 'cameras' | 'record' | 'objects' | 'motion' | 'go2rtc' | 'raw' | 'history';
 
 /**
  * Root component. Owns discovery, config load/save and sidebar state,
@@ -258,6 +262,10 @@ export class FrigateConfigEditor extends LitElement {
     if (!this.workingConfig) return this.originalYaml;
     const parsed = parseYaml(this.originalYaml);
     applyPatch(parsed.document, 'cameras', this.workingConfig.cameras);
+    for (const section of ['record', 'objects', 'motion', 'go2rtc'] as const) {
+      const value = this.workingConfig[section];
+      applyPatch(parsed.document, section, value);
+    }
     return stringifyDocument(parsed.document);
   }
 
@@ -336,6 +344,40 @@ export class FrigateConfigEditor extends LitElement {
     this.workingConfig = next as FrigateConfig;
   };
 
+  #onRecordChange = (event: CustomEvent<{ record: FrigateConfig['record'] }>) => {
+    if (!this.workingConfig) return;
+    this.workingConfig = this.#withSection(this.workingConfig, 'record', event.detail.record);
+  };
+
+  #onObjectsChange = (event: CustomEvent<{ objects: FrigateConfig['objects'] }>) => {
+    if (!this.workingConfig) return;
+    this.workingConfig = this.#withSection(this.workingConfig, 'objects', event.detail.objects);
+  };
+
+  #onMotionChange = (event: CustomEvent<{ motion: FrigateConfig['motion'] }>) => {
+    if (!this.workingConfig) return;
+    this.workingConfig = this.#withSection(this.workingConfig, 'motion', event.detail.motion);
+  };
+
+  #onGo2RtcChange = (event: CustomEvent<{ go2rtc: FrigateConfig['go2rtc'] }>) => {
+    if (!this.workingConfig) return;
+    this.workingConfig = this.#withSection(this.workingConfig, 'go2rtc', event.detail.go2rtc);
+  };
+
+  #withSection<K extends 'record' | 'objects' | 'motion' | 'go2rtc'>(
+    config: FrigateConfig,
+    key: K,
+    value: FrigateConfig[K] | undefined,
+  ): FrigateConfig {
+    const next: FrigateConfig = { ...config };
+    if (value === undefined) {
+      delete next[key];
+    } else {
+      (next as Record<string, unknown>)[key] = value;
+    }
+    return next;
+  }
+
   #onInstanceChange = (event: Event) => {
     const target = event.target as HTMLSelectElement;
     const instance = this.instances.find((i) => i.id === target.value);
@@ -410,6 +452,38 @@ export class FrigateConfigEditor extends LitElement {
             .selected=${this.selectedCamera}
             @fce-camera-select=${this.#onCameraSelect}
           ></frigate-camera-list>
+
+          <h2>Global</h2>
+          <nav class="nav">
+            <button
+              class=${this.view === 'record' ? 'nav-btn active' : 'nav-btn'}
+              type="button"
+              @click=${() => this.#setView('record')}
+            >
+              Record
+            </button>
+            <button
+              class=${this.view === 'objects' ? 'nav-btn active' : 'nav-btn'}
+              type="button"
+              @click=${() => this.#setView('objects')}
+            >
+              Objects
+            </button>
+            <button
+              class=${this.view === 'motion' ? 'nav-btn active' : 'nav-btn'}
+              type="button"
+              @click=${() => this.#setView('motion')}
+            >
+              Motion
+            </button>
+            <button
+              class=${this.view === 'go2rtc' ? 'nav-btn active' : 'nav-btn'}
+              type="button"
+              @click=${() => this.#setView('go2rtc')}
+            >
+              go2rtc
+            </button>
+          </nav>
 
           <h2>Advanced</h2>
           <nav class="nav">
@@ -490,6 +564,10 @@ export class FrigateConfigEditor extends LitElement {
   #headingForView(): string {
     if (this.view === 'raw') return 'Raw YAML';
     if (this.view === 'history') return 'History';
+    if (this.view === 'record') return 'Record';
+    if (this.view === 'objects') return 'Objects';
+    if (this.view === 'motion') return 'Motion';
+    if (this.view === 'go2rtc') return 'go2rtc';
     return this.selectedCamera || 'Select a camera';
   }
 
@@ -525,6 +603,38 @@ export class FrigateConfigEditor extends LitElement {
           .snapshots=${this.snapshots}
           @fce-history-restore=${this.#onHistoryRestore}
         ></frigate-history-panel>
+      `;
+    }
+    if (this.view === 'record') {
+      return html`
+        <frigate-record-editor
+          .record=${this.workingConfig?.record ?? {}}
+          @fce-record-change=${this.#onRecordChange}
+        ></frigate-record-editor>
+      `;
+    }
+    if (this.view === 'objects') {
+      return html`
+        <frigate-objects-editor
+          .objects=${this.workingConfig?.objects ?? {}}
+          @fce-objects-change=${this.#onObjectsChange}
+        ></frigate-objects-editor>
+      `;
+    }
+    if (this.view === 'motion') {
+      return html`
+        <frigate-motion-editor
+          .motion=${this.workingConfig?.motion ?? {}}
+          @fce-motion-change=${this.#onMotionChange}
+        ></frigate-motion-editor>
+      `;
+    }
+    if (this.view === 'go2rtc') {
+      return html`
+        <frigate-go2rtc-editor
+          .go2rtc=${this.workingConfig?.go2rtc ?? {}}
+          @fce-go2rtc-change=${this.#onGo2RtcChange}
+        ></frigate-go2rtc-editor>
       `;
     }
     if (!currentCamera) {
