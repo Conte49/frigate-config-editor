@@ -1,0 +1,11 @@
+{
+  "domain": "frigate_config_editor",
+  "name": "Frigate Config Editor",
+  "documentation": "https://github.com/Conte49/frigate-config-editor",
+  "issue_tracker": "https://github.com/Conte49/frigate-config-editor/issues",
+  "codeowners": ["@Conte49"],
+  "requirements": [],
+  "dependencies": ["http", "frontend"],
+  "iot_class": "local_push",
+  "version": "0.1.0"
+}

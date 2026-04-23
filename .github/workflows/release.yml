@@ -30,13 +30,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build
+      - name: Build front-end bundle
         run: pnpm build
+
+      - name: Sanity-check the bundled file is in place
+        run: |
+          ls -lh custom_components/frigate_config_editor/www/frigate-config-editor.js
+
+      - name: Zip the custom_components folder
+        run: |
+          cd custom_components/frigate_config_editor
+          zip -r ../../frigate_config_editor.zip .
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/frigate-config-editor.js
+          files: |
+            frigate_config_editor.zip
+            custom_components/frigate_config_editor/www/frigate-config-editor.js
           generate_release_notes: true
           body_path: CHANGELOG.md
           draft: false

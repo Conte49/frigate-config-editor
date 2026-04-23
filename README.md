@@ -33,23 +33,12 @@ Editing Frigate's YAML config by hand is error-prone. This panel generates form 
 Install via HACS as a **custom repository**:
 
 1. In HACS, open the kebab menu, pick **Custom repositories**.
-2. Add `https://github.com/Conte49/frigate-config-editor` with category **Panel**.
+2. Add `https://github.com/Conte49/frigate-config-editor` with category **Integrazione / Integration**.
 3. Install the entry called "Frigate Config Editor".
-4. Restart Home Assistant when HACS prompts you to do so.
-5. The new panel appears in the sidebar, visible to admin users only.
+4. Restart Home Assistant.
+5. The new "Frigate Config" entry appears in the sidebar, visible to admin users only. No extra YAML is required.
 
-The panel is registered automatically by HACS through `panel_custom`. If you prefer to wire it up manually (e.g. outside HACS), add this to your `configuration.yaml`:
-
-```yaml
-panel_custom:
-  - name: frigate-config-editor
-    sidebar_title: Frigate Config
-    sidebar_icon: mdi:cog-outline
-    url_path: frigate-config
-    module_url: /hacsfiles/frigate-config-editor/frigate-config-editor.js
-    embed_iframe: false
-    require_admin: true
-```
+The integration is a lightweight Python shim that only serves the front-end bundle and registers the sidebar panel. It does not add entities, services or config flows; all interaction happens through the JavaScript UI, which talks to Frigate directly from the browser.
 
 ## Development
 

@@ -13,6 +13,7 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+custom_components/frigate_config_editor/www/
 
 # Testing
 coverage/

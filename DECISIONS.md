@@ -211,3 +211,33 @@ modal.
 **Consequences:** one extra click for every save; acceptable trade-off
 for the safety it provides. Keyboard shortcut (Enter to confirm) is a
 post-MVP polish item.
+
+---
+
+## ADR-010 — Ship as an HACS integration, not as a plugin
+
+**Date:** post-M7 hotfix
+**Status:** Accepted
+**Context:** The MVP was meant to be distributed as a HACS "plugin"
+(Lovelace resource). During the first install attempt HACS rejected
+the repository with `Repository structure for main is not compliant`
+because recent HACS releases no longer allow plugins to register
+sidebar panels — only Lovelace cards live in that category.
+
+**Decision:** add a minimal Python "integration" shim under
+`custom_components/frigate_config_editor/` whose only responsibility
+is to serve the bundled JS and register the panel via
+`frontend.async_register_built_in_panel`. The front-end code itself is
+unchanged.
+
+**Consequences:**
+
+- `hacs.json` becomes an integration manifest; HACS category is
+  "Integrazione / Integration".
+- The Vite build now outputs directly into
+  `custom_components/frigate_config_editor/www/` so the release zip can
+  be produced with a single step.
+- Users no longer need to hand-edit `configuration.yaml`; HACS +
+  restart is enough.
+- The shim is static (~40 lines of Python). It is expected to stay
+  untouched for the foreseeable future.
