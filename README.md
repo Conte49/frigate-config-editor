@@ -31,13 +31,22 @@ Editing Frigate's YAML config by hand is error-prone. This panel generates dynam
 
 ## Development
 
-Stack: Lit 3, TypeScript, Vite. Detailed setup instructions will land with milestone M0.
+Stack: Lit 3, TypeScript, Vite, pnpm.
 
 ```bash
-# placeholder — not yet implemented
+# Node 20+ required (use nvm: `nvm use`)
+corepack enable
 pnpm install
-pnpm dev
+
+pnpm dev         # start Vite dev server
+pnpm typecheck   # strict TypeScript check
+pnpm lint        # ESLint
+pnpm format      # Prettier (write)
+pnpm test        # Vitest (single run)
+pnpm build       # produce dist/frigate-config-editor.js
 ```
+
+See [DECISIONS.md](DECISIONS.md) for the log of architectural choices.
 
 ## Contributing
 
