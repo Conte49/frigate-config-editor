@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   release:
@@ -49,5 +50,4 @@ jobs:
           generate_release_notes: true
           body_path: CHANGELOG.md
           draft: false
-          make_latest: 'true'
           fail_on_unmatched_files: true
