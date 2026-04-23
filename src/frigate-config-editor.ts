@@ -32,6 +32,8 @@ export class FrigateConfigEditor extends LitElement {
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ attribute: false }) panel?: PanelInfo;
   @property({ type: Boolean, reflect: true }) narrow = false;
+  @property({ type: Boolean, reflect: true, attribute: 'sidebar-open' }) private sidebarVisible =
+    false;
 
   @state() private instances: FrigateInstance[] = [];
   @state() private currentInstance?: FrigateInstance;
@@ -50,6 +52,7 @@ export class FrigateConfigEditor extends LitElement {
   @state() private snapshots: ConfigSnapshot[] = [];
 
   private readonly history = new HistoryStore();
+  #saveMessageTimer: ReturnType<typeof setTimeout> | undefined;
 
   static override styles = [
     themeVariables,
@@ -63,12 +66,9 @@ export class FrigateConfigEditor extends LitElement {
       }
       .shell {
         display: grid;
-        grid-template-columns: 260px 1fr;
-        gap: 0;
+        grid-template-columns: 260px minmax(0, 1fr);
         height: 100%;
-      }
-      :host([narrow]) .shell {
-        grid-template-columns: 1fr;
+        position: relative;
       }
       aside {
         border-right: 1px solid var(--fce-border);
@@ -77,8 +77,9 @@ export class FrigateConfigEditor extends LitElement {
         overflow-y: auto;
       }
       main {
-        padding: 24px 32px;
+        padding: 20px 32px 40px;
         overflow-y: auto;
+        min-width: 0;
       }
       header.page {
         display: flex;
@@ -86,18 +87,39 @@ export class FrigateConfigEditor extends LitElement {
         justify-content: space-between;
         gap: 12px;
         margin-bottom: 20px;
+        position: sticky;
+        top: 0;
+        background: var(--fce-bg);
+        padding: 10px 0;
+        z-index: 2;
       }
-      h1 {
+      .page-title {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+      .page-title h1 {
         margin: 0;
         font-size: 1.25rem;
         font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .page-title small {
+        color: var(--fce-text-muted);
+        font-size: 0.75rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       h2 {
-        margin: 24px 0 8px;
-        font-size: 0.8rem;
+        margin: 20px 0 8px;
+        font-size: 0.72rem;
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.08em;
         color: var(--fce-text-muted);
       }
       .instance-pill {
@@ -112,11 +134,12 @@ export class FrigateConfigEditor extends LitElement {
         gap: 8px;
         align-items: center;
         flex-wrap: wrap;
+        flex-shrink: 0;
       }
       .nav {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 2px;
       }
       .nav-btn {
         text-align: left;
@@ -132,9 +155,25 @@ export class FrigateConfigEditor extends LitElement {
       .nav-btn:hover {
         background: var(--fce-surface-muted);
       }
+      .nav-btn:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(3, 169, 244, 0.35);
+      }
       .nav-btn.active {
         background: var(--fce-accent);
         color: var(--fce-accent-text);
+      }
+      .aside-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .aside-header h1 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
       }
       button {
         font-family: inherit;
@@ -146,6 +185,10 @@ export class FrigateConfigEditor extends LitElement {
         color: var(--fce-text);
         cursor: pointer;
       }
+      button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(3, 169, 244, 0.35);
+      }
       button.primary {
         background: var(--fce-accent);
         color: var(--fce-accent-text);
@@ -155,10 +198,22 @@ export class FrigateConfigEditor extends LitElement {
         opacity: 0.5;
         cursor: not-allowed;
       }
+      .icon-btn {
+        display: none;
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        justify-content: center;
+        align-items: center;
+      }
       .banner {
         padding: 12px 14px;
         border-radius: var(--fce-radius);
         margin-bottom: 16px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        animation: slide-in 180ms ease;
       }
       .banner.error {
         background: color-mix(in srgb, var(--fce-danger) 10%, transparent);
@@ -190,6 +245,69 @@ export class FrigateConfigEditor extends LitElement {
         color: var(--fce-text);
         font-family: inherit;
       }
+
+      .scrim {
+        display: none;
+      }
+
+      @keyframes slide-in {
+        from {
+          opacity: 0;
+          transform: translateY(-4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* --- Responsive: below 860px sidebar slides in as a drawer --- */
+      @media (max-width: 860px) {
+        .shell {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        aside {
+          position: fixed;
+          inset: 0 auto 0 0;
+          width: 280px;
+          max-width: 80vw;
+          transform: translateX(-100%);
+          transition: transform 220ms ease;
+          z-index: 100;
+          box-shadow: 0 0 24px rgba(0, 0, 0, 0.25);
+        }
+        :host([sidebar-open]) aside {
+          transform: translateX(0);
+        }
+        :host([sidebar-open]) .scrim {
+          display: block;
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.35);
+          z-index: 50;
+        }
+        main {
+          padding: 16px 16px 24px;
+        }
+        .icon-btn {
+          display: inline-flex;
+        }
+        .page-title h1 {
+          font-size: 1.05rem;
+        }
+        header.page {
+          padding: 8px 0;
+        }
+      }
+      @media (max-width: 560px) {
+        .toolbar {
+          width: 100%;
+          justify-content: flex-end;
+        }
+        header.page {
+          flex-wrap: wrap;
+        }
+      }
     `,
   ];
 
@@ -203,6 +321,26 @@ export class FrigateConfigEditor extends LitElement {
       void this.#bootstrap();
     }
   }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    if (this.#saveMessageTimer) clearTimeout(this.#saveMessageTimer);
+  }
+
+  #scheduleSaveMessageDismiss(): void {
+    if (this.#saveMessageTimer) clearTimeout(this.#saveMessageTimer);
+    this.#saveMessageTimer = setTimeout(() => {
+      this.saveMessage = '';
+    }, 6_000);
+  }
+
+  #closeSidebar = () => {
+    this.sidebarVisible = false;
+  };
+
+  #toggleSidebar = () => {
+    this.sidebarVisible = !this.sidebarVisible;
+  };
 
   async #bootstrap(): Promise<void> {
     if (!this.hass) return;
@@ -274,6 +412,7 @@ export class FrigateConfigEditor extends LitElement {
     if (nextYaml === this.originalYaml) {
       this.saveMessage = 'No changes to save.';
       this.errorMessage = '';
+      this.#scheduleSaveMessageDismiss();
       return;
     }
     this.pendingYaml = nextYaml;
@@ -314,6 +453,7 @@ export class FrigateConfigEditor extends LitElement {
       const { data } = parseYaml(nextYaml);
       this.workingConfig = data as FrigateConfig;
       this.saveMessage = 'Configuration saved. Frigate is restarting.';
+      this.#scheduleSaveMessageDismiss();
       this.diffOpen = false;
       this.pendingYaml = '';
       this.status = 'ready';
@@ -332,6 +472,8 @@ export class FrigateConfigEditor extends LitElement {
 
   #onCameraSelect = (event: CustomEvent<{ id: string }>) => {
     this.selectedCamera = event.detail.id;
+    this.view = 'cameras';
+    this.sidebarVisible = false;
   };
 
   #onCameraChange = (event: CustomEvent<{ cameraId: string; camera: CameraConfig }>) => {
@@ -398,6 +540,7 @@ export class FrigateConfigEditor extends LitElement {
 
   #setView(view: View): void {
     this.view = view;
+    this.sidebarVisible = false;
     if (view === 'raw' && !this.rawYaml) this.rawYaml = this.originalYaml;
     if (view === 'cameras' && this.workingConfig === undefined) {
       try {
@@ -422,12 +565,12 @@ export class FrigateConfigEditor extends LitElement {
     return html`
       <div class="shell">
         <aside>
-          <header>
+          <div class="aside-header">
             <h1>Frigate</h1>
             ${this.frigateVersion
               ? html`<span class="instance-pill">v${this.frigateVersion}</span>`
               : nothing}
-          </header>
+          </div>
 
           ${this.instances.length > 1
             ? html`
@@ -513,10 +656,34 @@ export class FrigateConfigEditor extends LitElement {
 
         <main>
           <header class="page">
-            <div>
+            <button
+              class="icon-btn"
+              type="button"
+              aria-label="Toggle navigation"
+              aria-expanded=${this.sidebarVisible}
+              @click=${this.#toggleSidebar}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <div class="page-title">
               <h1>${this.#headingForView()}</h1>
               ${this.currentInstance
-                ? html`<small style="color: var(--fce-text-muted)"
+                ? html`<small
                     >${this.currentInstance.name} — ${this.currentInstance.baseUrl}</small
                   >`
                 : nothing}
@@ -541,13 +708,14 @@ export class FrigateConfigEditor extends LitElement {
           </header>
 
           ${this.errorMessage
-            ? html`<div class="banner error">${this.errorMessage}</div>`
+            ? html`<div class="banner error" role="alert">${this.errorMessage}</div>`
             : nothing}
           ${this.saveMessage && !this.errorMessage
-            ? html`<div class="banner success">${this.saveMessage}</div>`
+            ? html`<div class="banner success" role="status">${this.saveMessage}</div>`
             : nothing}
           ${this.#renderBody(currentCamera)}
         </main>
+        <div class="scrim" @click=${this.#closeSidebar} aria-hidden="true"></div>
       </div>
 
       <frigate-diff-modal

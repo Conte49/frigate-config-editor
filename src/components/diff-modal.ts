@@ -126,6 +126,24 @@ export class FrigateDiffModal extends LitElement {
     `,
   ];
 
+  override connectedCallback(): void {
+    super.connectedCallback();
+    this.#keyHandler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && this.open && !this.saving) {
+        event.preventDefault();
+        this.#cancel();
+      }
+    };
+    window.addEventListener('keydown', this.#keyHandler);
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    if (this.#keyHandler) window.removeEventListener('keydown', this.#keyHandler);
+  }
+
+  #keyHandler?: (event: KeyboardEvent) => void;
+
   override render() {
     if (!this.open) return nothing;
     const lines = diffLines(this.oldText, this.newText);
